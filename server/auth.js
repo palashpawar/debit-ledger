@@ -72,9 +72,49 @@ function parseCookies(header) {
 
 /* ------------------------------ request shape ------------------------------ */
 
-/** A tunnelled request carries forwarding headers; a direct one does not. */
+/**
+ * Loopback peers only. A tunnel daemon (tailscaled, cloudflared) runs on this
+ * machine, so its connections also arrive from loopback — the socket address
+ * alone never proves a request is local.
+ */
+const LOOPBACK = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
+
+function peerIsLoopback(req) {
+  return LOOPBACK.has(req.socket?.remoteAddress ?? "");
+}
+
+function hasForwardingHeaders(req) {
+  return Boolean(
+    req.headers["cf-connecting-ip"] ||
+    req.headers["x-forwarded-for"] ||
+    req.headers["x-real-ip"] ||
+    req.headers["forwarded"],
+  );
+}
+
+/**
+ * A request skips the password ONLY when it is a direct connection from this
+ * machine: a loopback socket AND no proxy headers. Everything else — a tunnel,
+ * another host on the LAN, an unrecognised proxy — must authenticate.
+ *
+ * Deliberately inverted from "is it remote?" to "has it earned an exemption?".
+ * The old form failed OPEN: binding to 0.0.0.0, or fronting the app with a
+ * proxy that doesn't set forwarding headers, would have silently stopped
+ * requiring a password. This form fails CLOSED — the same mistakes lock you
+ * out instead of publishing your bank history.
+ *
+ * Set ALLOW_LOCAL_BYPASS=false to require the password even on this Mac.
+ */
+export const allowLocalBypass = String(process.env.ALLOW_LOCAL_BYPASS ?? "true").toLowerCase() !== "false";
+
+export function isTrustedLocal(req) {
+  if (!allowLocalBypass) return false;
+  return peerIsLoopback(req) && !hasForwardingHeaders(req);
+}
+
+/** Kept for callers that want the inverse; now simply "not exempt". */
 export function isRemote(req) {
-  return Boolean(req.headers["cf-connecting-ip"] || req.headers["x-forwarded-for"]);
+  return !isTrustedLocal(req);
 }
 
 const clientKey = (req) =>
@@ -106,7 +146,7 @@ function recordFailure(key) {
 const OPEN_PATHS = new Set(["/login", "/login.html", "/api/login", "/styles.css"]);
 
 export function requireAuth(req, res, next) {
-  if (!isRemote(req)) return next();               // local: unchanged behaviour
+  if (isTrustedLocal(req)) return next();
 
   if (!authConfigured) {
     return res.status(503).type("text/plain").send(
@@ -131,7 +171,7 @@ export function requireAuth(req, res, next) {
 
 export function mountAuth(app) {
   app.get("/login", (req, res, next) => {
-    if (!isRemote(req)) return res.redirect(302, "/");
+    if (isTrustedLocal(req)) return res.redirect(302, "/");
     req.url = "/login.html";
     next();
   });

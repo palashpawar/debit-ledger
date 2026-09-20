@@ -7,7 +7,7 @@ import { readdirSync, readFileSync, renameSync, mkdirSync, statSync } from "node
 import { extract } from "./csv.js";
 
 import { items, accounts, transactions, rules, settings } from "./db.js";
-import { requireAuth, mountAuth, authConfigured } from "./auth.js";
+import { requireAuth, mountAuth, authConfigured, allowLocalBypass } from "./auth.js";
 import { CATS, CAT_IDS, categorize, merchantKey, cleanMerchant } from "./categorize.js";
 import {
   plaidConfigured, plaidEnv, plaidError, usageReport, CALL_BUDGET,
@@ -319,6 +319,7 @@ app.listen(PORT, "127.0.0.1", () => {
   console.log(`  Bank slots: ${u.items}${u.itemLimit ? "/" + u.itemLimit : " (no cap)"}` +
               `   ·   Plaid calls: ${u.calls}${u.callBudget ? "/" + u.callBudget : " (uncapped)"}`);
   console.log(`  Remote access: ${authConfigured ? "password set" : "DISABLED (no APP_PASSWORD)"}`);
+  console.log(`  Local bypass:  ${allowLocalBypass ? "on (direct loopback only)" : "off — password required everywhere"}`);
   console.log(`  Data:  ${join(ROOT, "data", "ledger.db")}`);
   console.log(`  Inbox: ${INBOX}  (drop bank CSVs here)\n`);
   scanInbox();

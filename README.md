@@ -213,9 +213,13 @@ it through the dialog where you can map the columns yourself.
   for your bank data. It's gitignored and created `chmod 600`. Don't commit it,
   and don't sync this folder to a shared drive.
 - `.env` holds your Plaid secret. Also gitignored.
-- The server has **no authentication**, which is fine only because it listens on
-  `127.0.0.1` and nothing off this machine can reach it. If you ever change the
-  bind address, add auth first.
+- Remote access requires `APP_PASSWORD` (scrypt + timing-safe compare, SQLite
+  sessions, HttpOnly/Secure/SameSite cookie, 5-attempt lockout). The exemption
+  is deliberately narrow: **a direct loopback socket with no proxy headers.**
+  Anything else — a tunnel, another host on the LAN, an unfamiliar proxy — must
+  authenticate, so binding to `0.0.0.0` or fronting the app with a different
+  proxy locks you out rather than silently publishing your data. Set
+  `ALLOW_LOCAL_BYPASS=false` to require the password on this machine too.
 - Access tokens never leave the server process — the `/api/state` response
   strips them before sending anything to the browser.
 - Disconnecting a bank calls Plaid's `/item/remove`, which revokes the token on
