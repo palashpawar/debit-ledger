@@ -1,0 +1,20 @@
+#!/bin/sh
+# Launcher for launchd, which runs with a minimal PATH — everything absolute.
+set -e
+DIR="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$DIR"
+
+# nvm paths are version-pinned, so fall back rather than silently failing at boot.
+NODE="$HOME/.nvm/versions/node/v23.11.0/bin/node"
+if [ ! -x "$NODE" ]; then
+  NODE="$(ls -1d "$HOME"/.nvm/versions/node/*/bin/node 2>/dev/null | tail -1)"
+fi
+if [ ! -x "$NODE" ]; then
+  for c in /opt/homebrew/bin/node /usr/local/bin/node /usr/bin/node; do
+    [ -x "$c" ] && NODE="$c" && break
+  done
+fi
+[ -x "$NODE" ] || { echo "no usable node found" >&2; exit 78; }
+
+echo "--- starting $(date) with $NODE ---"
+exec "$NODE" --no-warnings server/index.js

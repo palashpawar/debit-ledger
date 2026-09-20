@@ -1,0 +1,20 @@
+{
+  "name": "debit-ledger",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local debit card spending dashboard backed by Plaid",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node --no-warnings server/index.js",
+    "dev": "node --no-warnings --watch server/index.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "plaid": "^47.0.0"
+  }
+}

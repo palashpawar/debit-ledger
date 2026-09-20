@@ -1,0 +1,70 @@
+#!/bin/sh
+# Control surface. The server runs under launchd; the public URL is Tailscale
+# Funnel, which is declarative config held by the Tailscale daemon rather than
+# a process of its own — so there is nothing to keep alive for it.
+DIR="$(cd "$(dirname "$0")/.." && pwd)"
+SRV=com.palashpawar.debit-ledger
+GUI="gui/$(id -u)"
+PL="$HOME/Library/LaunchAgents"
+TS=/Applications/Tailscale.app/Contents/MacOS/Tailscale
+
+# Derive from this machine's actual DNS name rather than scraping the first
+# hostname out of funnel status — a rename leaves stale entries behind, and
+# grepping the top line then reports the dead one.
+url() {
+  host="$("$TS" status --json 2>/dev/null | python3 -c "
+import json,sys
+try:
+    print((json.load(sys.stdin).get('Self') or {}).get('DNSName','').rstrip('.'))
+except Exception:
+    print('')
+")"
+  [ -n "$host" ] || return 1
+  "$TS" funnel status 2>/dev/null | grep -q "https://$host" || return 1
+  echo "https://$host"
+}
+
+case "${1:-status}" in
+  url)
+    u="$(url)"
+    [ -n "$u" ] && echo "$u" || { echo "Funnel is off — run: ledger funnel-on" >&2; exit 1; }
+    ;;
+  start)
+    launchctl bootstrap "$GUI" "$PL/$SRV.plist" 2>/dev/null
+    echo "server started"
+    ;;
+  stop)
+    launchctl bootout "$GUI/$SRV" 2>/dev/null
+    echo "server stopped (Funnel still configured; use funnel-off to unpublish)"
+    ;;
+  restart)
+    launchctl kickstart -k "$GUI/$SRV" 2>/dev/null
+    echo "server restarting — the URL does not change"
+    ;;
+  funnel-on)
+    "$TS" funnel --bg 4310
+    ;;
+  funnel-off)
+    "$TS" funnel --https=443 off && echo "unpublished — reachable only on this Mac"
+    ;;
+  logs)
+    tail -n 40 "$DIR/logs/server.log"
+    ;;
+  status)
+    if launchctl print "$GUI/$SRV" >/dev/null 2>&1; then
+      pid=$(launchctl print "$GUI/$SRV" 2>/dev/null | awk '/^\tpid = /{print $3; exit}')
+      if [ -n "$pid" ]; then
+        printf "  %-14s running, pid %s\n" "server" "$pid"
+      else
+        printf "  %-14s loaded, not running\n" "server"
+      fi
+    else
+      printf "  %-14s not loaded\n" "server"
+    fi
+    u="$(url)"
+    printf "  %-14s %s\n" "funnel" "${u:-off}"
+    printf "  %-14s %s\n" "local" "http://127.0.0.1:4310"
+    ;;
+  *)
+    echo "usage: ledger {url|status|start|stop|restart|funnel-on|funnel-off|logs}" >&2; exit 2 ;;
+esac

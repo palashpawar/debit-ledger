@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Debit Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%231c5cab'/><text x='16' y='23' font-size='20' font-family='monospace' font-weight='600' fill='white' text-anchor='middle'>$</text></svg>">
+</head>
+<body>
+
+<div class="topbar"><div class="topbar-in">
+  <div class="brand">
+    <div class="brand-mark"><span>$</span></div>
+    <div>
+      <div class="brand-name">Debit Ledger</div>
+      <div class="brand-sub" id="brandSub">Checking · debit card</div>
+    </div>
+  </div>
+  <div class="monthnav">
+    <button class="iconbtn" id="prevM" aria-label="Previous month">‹</button>
+    <div class="label" id="mLabel">—</div>
+    <button class="iconbtn" id="nextM" aria-label="Next month">›</button>
+  </div>
+  <button class="btn" id="importBtn">Import CSV</button>
+  <button class="btn" id="syncBtn">Sync</button>
+  <button class="btn btn-primary" id="connectBtn">Connect bank</button>
+</div></div>
+
+<div class="wrap">
+  <div id="setup"></div>
+  <div id="banks"></div>
+
+  <div class="row">
+    <section class="panel">
+      <div class="panel-head">
+        <div class="eyebrow" id="spentLabel">Spent</div>
+        <div class="spacer"></div>
+      </div>
+      <div class="hero-row">
+        <div class="hero-fig" id="heroSpent">$0.00</div>
+        <div id="heroDelta"></div>
+      </div>
+      <div class="fixed-note" id="fixedNote" hidden></div>
+      <div class="pace">
+        <div class="pace-top">
+          <span class="pace-label">Monthly budget</span>
+          <span id="budgetSlot"></span>
+          <span id="pacePill"></span>
+        </div>
+        <div class="track" id="track">
+          <div class="fill" id="fill" style="width:0%"></div>
+          <div class="marker" id="marker" hidden></div>
+        </div>
+        <div class="pace-foot">
+          <span id="paceLeft">—</span>
+          <span id="paceRight">—</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="tiles">
+      <div class="tile"><div class="k">Daily average</div><div class="v" id="tAvg">—</div><div class="s" id="tAvgS">—</div></div>
+      <div class="tile"><div class="k">Projected</div><div class="v" id="tProj">—</div><div class="s" id="tProjS">—</div></div>
+      <div class="tile"><div class="k">Largest</div><div class="v" id="tMax">—</div><div class="s" id="tMaxS">—</div></div>
+      <div class="tile"><div class="k">Purchases</div><div class="v" id="tCnt">—</div><div class="s" id="tCntS">—</div></div>
+    </div>
+  </div>
+
+  <div class="row">
+    <section class="panel">
+      <div class="panel-head"><div class="eyebrow">Daily spend</div><div class="spacer"></div>
+        <div class="eyebrow" id="dailyNote"></div></div>
+      <div class="chartbox" id="dailyBox">
+        <div class="tip" id="tip"><div class="t-d" id="tipD"></div><div class="t-v" id="tipV"></div></div>
+      </div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><div class="eyebrow">Where it went</div></div>
+      <div class="cats" id="catList"></div>
+    </section>
+  </div>
+
+  <div class="ledger-head">
+    <h2>Transactions</h2>
+    <span class="count" id="ledgerCount"></span>
+    <div class="tools">
+      <label class="toggleline" title="Leave rent, loan payments and insurance out of the totals, budget and averages — they stay in the ledger below."><input type="checkbox" id="discToggle"> Discretionary only</label>
+      <label class="toggleline"><input type="checkbox" id="xferToggle"> Include transfers</label>
+      <input class="input" id="search" type="search" placeholder="Search merchant…" style="width:170px">
+      <select class="select" id="catFilter"><option value="">All categories</option></select>
+    </div>
+  </div>
+
+  <form class="addrow" id="addForm">
+    <input class="input" type="date" id="fDate" required aria-label="Date">
+    <input class="input a-merchant" type="text" id="fMerchant" placeholder="Merchant" required aria-label="Merchant">
+    <input class="input a-amt" type="number" id="fAmount" step="0.01" min="0" placeholder="0.00" required aria-label="Amount">
+    <select class="select" id="fCat" aria-label="Category"></select>
+    <button class="btn btn-primary a-btn" type="submit">Add</button>
+  </form>
+
+  <div id="ledger"></div>
+
+  <div class="foot">Change a category in the ledger and that merchant is remembered — past and future.</div>
+</div>
+
+<dialog id="csvDlg">
+  <div class="dlg-head"><h3>Import from a CSV</h3></div>
+  <div class="dlg-body" id="dlgBody">
+    <div class="dropzone" id="dropzone">
+      <div class="dz-main">Drop a CSV here</div>
+      <div class="dz-sub">or <button type="button" class="linkbtn" id="csvPick">choose a file</button> · or paste below</div>
+      <input type="file" id="csvFile" accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values" hidden>
+    </div>
+    <p class="hint">Columns are detected automatically. Anything you drop into
+      <code>data/inbox/</code> is imported on its own within a few seconds — no dialog needed.</p>
+    <textarea class="csv" id="csvText" spellcheck="false" placeholder="Date,Description,Amount
+09/14/2026,H-E-B #429 AUSTIN TX,-82.41
+09/13/2026,TORCHY'S TACOS,-16.75"></textarea>
+    <div class="maprow" id="mapRow" hidden>
+      <div><label for="mapDate">Date column</label><select class="select" id="mapDate"></select></div>
+      <div><label for="mapDesc">Merchant column</label><select class="select" id="mapDesc"></select></div>
+      <div><label for="mapAmt">Amount column</label><select class="select" id="mapAmt"></select></div>
+    </div>
+    <div class="checkline" id="flipLine" hidden>
+      <input type="checkbox" id="flipSign"><label for="flipSign">Purchases are positive numbers in this file</label>
+    </div>
+    <div class="status" id="csvStatus" hidden></div>
+    <div class="preview" id="csvPreview"></div>
+  </div>
+  <div class="dlg-foot">
+    <span class="eyebrow" id="csvSummary"></span>
+    <div class="spacer"></div>
+    <button class="btn btn-ghost" id="csvCancel" type="button">Cancel</button>
+    <button class="btn btn-primary" id="csvGo" type="button" disabled>Import</button>
+  </div>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

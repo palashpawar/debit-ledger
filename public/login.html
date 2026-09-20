@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Debit Ledger · Sign in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%231c5cab'/><text x='16' y='23' font-size='20' font-family='monospace' font-weight='600' fill='white' text-anchor='middle'>$</text></svg>">
+<style>
+  html, body { height: 100%; }
+  .gate{
+    min-height:100%; display:grid; place-items:center;
+    padding:24px 16px; box-sizing:border-box;
+  }
+  .card{
+    width:100%; max-width:360px; background:var(--surface);
+    border:1px solid var(--rule); border-radius:14px; padding:26px 24px;
+    box-shadow:0 8px 32px rgba(0,0,0,.10);
+  }
+  .mark{
+    width:34px; height:34px; border-radius:9px; background:var(--accent);
+    display:grid; place-items:center; margin-bottom:16px;
+  }
+  .mark span{ color:#fff; font-family:var(--mono); font-weight:600; font-size:18px; line-height:1; }
+  :root[data-theme="dark"] .mark span{ color:#0d0f11; }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .mark span{ color:#0d0f11; } }
+  h1{ font-size:19px; font-weight:600; margin:0 0 5px; letter-spacing:-.01em; }
+  .sub{ font-size:13.5px; color:var(--ink-3); margin:0 0 20px; line-height:1.5; }
+  label{ display:block; font-size:11px; font-weight:600; letter-spacing:.07em;
+         text-transform:uppercase; color:var(--ink-3); margin-bottom:6px; }
+  input[type=password]{
+    width:100%; box-sizing:border-box; font-family:var(--mono); font-size:15px;
+    padding:11px 12px; border:1px solid var(--rule); border-radius:9px;
+    background:var(--surface-2); color:var(--ink);
+  }
+  input[type=password]:focus{ outline:none; border-color:var(--accent);
+    box-shadow:0 0 0 3px var(--accent-soft); }
+  button{
+    width:100%; margin-top:14px; font-family:var(--sans); font-size:14.5px;
+    font-weight:500; padding:11px; border-radius:9px; cursor:pointer;
+    background:var(--accent); border:1px solid var(--accent); color:#fff;
+  }
+  :root[data-theme="dark"] button{ color:#0d0f11; }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) button{ color:#0d0f11; } }
+  button:hover{ filter:brightness(1.07); }
+  button:disabled{ opacity:.5; cursor:default; filter:none; }
+  .err{
+    margin-top:13px; font-size:13px; color:var(--crit); background:var(--crit-bg);
+    border:1px solid color-mix(in srgb, var(--crit) 30%, transparent);
+    border-radius:8px; padding:9px 11px;
+  }
+  .foot-note{ margin-top:18px; font-size:12px; color:var(--ink-3); line-height:1.5; }
+</style>
+</head>
+<body>
+<div class="gate">
+  <form class="card" id="form">
+    <div class="mark"><span>$</span></div>
+    <h1>Debit Ledger</h1>
+    <p class="sub">This dashboard is running on a personal machine. Sign in to reach it.</p>
+
+    <label for="pw">Password</label>
+    <input type="password" id="pw" autocomplete="current-password" autofocus required>
+    <button type="submit" id="go">Sign in</button>
+
+    <div class="err" id="err" hidden></div>
+    <p class="foot-note">Stays signed in on this device for 30 days.</p>
+  </form>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var form = document.getElementById("form");
+  var pw = document.getElementById("pw");
+  var go = document.getElementById("go");
+  var err = document.getElementById("err");
+
+  form.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    err.hidden = true;
+    go.disabled = true;
+    go.textContent = "Checking…";
+    try {
+      var res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: pw.value }),
+      });
+      var data = await res.json().catch(function () { return {}; });
+      if (res.ok) { window.location.replace("/"); return; }
+      err.textContent = data.error || "Sign in failed.";
+      err.hidden = false;
+    } catch (_) {
+      err.textContent = "Couldn't reach the server.";
+      err.hidden = false;
+    }
+    pw.value = "";
+    pw.focus();
+    go.disabled = false;
+    go.textContent = "Sign in";
+  });
+})();
+</script>
+</body>
+</html>
